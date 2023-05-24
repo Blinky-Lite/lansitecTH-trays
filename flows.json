@@ -2,7 +2,7 @@
     {
         "id": "35ebad916f0a27ed",
         "type": "tab",
-        "label": "blinky-bus-mqtt-trays",
+        "label": "blinky-mqtt-trays",
         "disabled": false,
         "info": "",
         "env": []

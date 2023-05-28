@@ -273,7 +273,8 @@
         "z": "35ebad916f0a27ed",
         "name": "request tray echo in",
         "links": [
-            "063def90cca3eae3"
+            "063def90cca3eae3",
+            "55b54f13100eb833"
         ],
         "x": 1575,
         "y": 220,
@@ -400,7 +401,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Save Trays in flow",
-        "func": "let tray = msg.payload;\nif (tray.name == env.get(\"ADMINNAME\"))\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet blinkybusCubes = [];\nlet blinkybusSettingCubes = [];\nlet keys = Object.keys(msg.payload)\nfor (let ikey  in keys)\n{\n    if (msg.payload[keys[ikey]].hasOwnProperty('type'))\n    {\n        if (msg.payload[keys[ikey]].hasOwnProperty('blinkybus')) \n        {\n            blinkybusCubes.push(keys[ikey]);\n            if (msg.payload[keys[ikey]].action == \"setting\") \n            {\n                blinkybusSettingCubes.push(keys[ikey]);\n            }\n        }\n    }\n}\nflow.get('traysConfig').push({tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp});\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
+        "func": "let tray = msg.payload;\nif (tray.name == env.get(\"ADMINNAME\"))\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet traysConfig = flow.get('traysConfig');\nlet blinkybusCubes = [];\nlet blinkybusSettingCubes = [];\nlet keys = Object.keys(msg.payload)\nfor (let ikey  in keys)\n{\n    if (msg.payload[keys[ikey]].hasOwnProperty('type'))\n    {\n        if (msg.payload[keys[ikey]].hasOwnProperty('blinkybus')) \n        {\n            blinkybusCubes.push(keys[ikey]);\n            if (msg.payload[keys[ikey]].action == \"setting\") \n            {\n                blinkybusSettingCubes.push(keys[ikey]);\n            }\n        }\n    }\n}\ntray.trayControl.value = 0;\nlet index = -1;\nfor (let itray in traysConfig)\n{\n    if ((traysConfig[itray].tray.type == tray.type) && (traysConfig[itray].tray.name == tray.name))\n    {\n        index = Number(itray);\n    }\n}\nif (index < 0)\n{\n    traysConfig.push({tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp});\n}\nelse\n{\n    traysConfig[index] = {tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp};\n}\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
         "outputs": 0,
         "noerr": 0,
         "initialize": "",
@@ -670,7 +671,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Alarm Scan",
-        "func": "let tray = msg.payload;\nlet alarmFlagReading = scalarAlarmScan(tray, 'reading');\nlet alarmFlagSetting = scalarAlarmScan(tray, 'setting');\nreturn {topic: 'alarmScanCompleted', payload: tray};\n\nfunction getActionArray(tray, type, actionType)\n{\n    var actionArray = [];\n    var keys = Object.keys(tray);\n    for (var ii = 0; ii < keys.length; ++ii)\n    {\n        if (tray[keys[ii]].hasOwnProperty('type'))\n        {\n            if (tray[keys[ii]].type == type)\n            {\n                if (tray[keys[ii]].action == actionType)\n                {\n                    actionArray.push(tray[keys[ii]]);\n                }\n            }\n        }\n    }\n    return actionArray;\n}\nfunction scalarAlarmScan(tray, actionType)\n{\n    var alarmFlag = false;\n    var actionArray = getActionArray(tray, 'scalar', actionType);\n    if (actionArray.length > 0)\n    {\n        for (var ii = 0; ii < actionArray.length; ++ii)\n        {\n            let oldAlarmValue = actionArray[ii].alarm.value;\n            actionArray[ii].alarm.value = 0;\n            if (!isNaN(actionArray[ii].value))\n            {\n                if (actionArray[ii].value <= actionArray[ii].alarm.limits.low)  actionArray[ii].alarm.value = 1;\n                if (actionArray[ii].value <= actionArray[ii].alarm.limits.lolo) actionArray[ii].alarm.value = 3;\n                if (actionArray[ii].value >= actionArray[ii].alarm.limits.high) actionArray[ii].alarm.value = 2;\n                if (actionArray[ii].value >= actionArray[ii].alarm.limits.hihi) actionArray[ii].alarm.value = 4;\n                if (actionArray[ii].alarm.value != oldAlarmValue) alarmFlag = true;\n            }\n        }\n    }\n    return alarmFlag;\n}\n",
+        "func": "let tray = msg.payload;\nlet alarmFlagReading = scalarAlarmScan(tray, 'reading');\nlet alarmFlagSetting = scalarAlarmScan(tray, 'setting');\nlet newMsg = null;\nswitch( tray.trayControl.value)\n{\n    case 0:\n        newMsg = {topic: 'alarmScanCompleted', payload: tray};\n        break;\n    case -1:\n        tray.trayControl.value = 1;\n        newMsg = {topic: 'alarmScanCompleted', payload: tray};\n        break;\n    default:\n        break;\n}\nreturn newMsg;\n\nfunction getActionArray(tray, type, actionType)\n{\n    var actionArray = [];\n    var keys = Object.keys(tray);\n    for (var ii = 0; ii < keys.length; ++ii)\n    {\n        if (tray[keys[ii]].hasOwnProperty('type'))\n        {\n            if (tray[keys[ii]].type == type)\n            {\n                if (tray[keys[ii]].action == actionType)\n                {\n                    actionArray.push(tray[keys[ii]]);\n                }\n            }\n        }\n    }\n    return actionArray;\n}\nfunction scalarAlarmScan(tray, actionType)\n{\n    var alarmFlag = false;\n    var actionArray = getActionArray(tray, 'scalar', actionType);\n    if (actionArray.length > 0)\n    {\n        for (var ii = 0; ii < actionArray.length; ++ii)\n        {\n            let oldAlarmValue = actionArray[ii].alarm.value;\n            actionArray[ii].alarm.value = 0;\n            if (!isNaN(actionArray[ii].value))\n            {\n                if (actionArray[ii].value <= actionArray[ii].alarm.limits.low)  actionArray[ii].alarm.value = 1;\n                if (actionArray[ii].value <= actionArray[ii].alarm.limits.lolo) actionArray[ii].alarm.value = 3;\n                if (actionArray[ii].value >= actionArray[ii].alarm.limits.high) actionArray[ii].alarm.value = 2;\n                if (actionArray[ii].value >= actionArray[ii].alarm.limits.hihi) actionArray[ii].alarm.value = 4;\n                if (actionArray[ii].alarm.value != oldAlarmValue) alarmFlag = true;\n            }\n        }\n    }\n    return alarmFlag;\n}\n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "// Code added here will be run once\n// whenever the node is started.\ncontext.set('lastAlarm', -1);",
@@ -732,7 +733,7 @@
             "ce5672e1f22d7692"
         ],
         "x": 1025,
-        "y": 340,
+        "y": 320,
         "wires": []
     },
     {
@@ -753,8 +754,8 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Setting",
-        "func": "let tray = msg.trayConfig.tray;\nlet publishTopic = tray.type + \"/\" + tray.name + \"/setting\";\nlet blinkyBusMessage = false;\nlet blinkyBusSettingMsg = \n{\n    topic : publishTopic, \n    payload : { value: 0,  'address': -1  } \n}\nlet icube = msg.trayConfig.blinkybusSettingCubes.indexOf(msg.payload.cube);\n\nif (icube >= 0)\n{\n    let cube = msg.trayConfig.tray[msg.payload.cube];\n    blinkyBusSettingMsg.payload.address = cube.blinkybus.address;\n    blinkyBusSettingMsg.payload.value = Math.round(msg.payload.value * cube.blinkybus.scale);\n    cube.value = msg.payload.value;\n    blinkyBusMessage = true;\n}\nlet msgArray = [null,null];\nif (blinkyBusMessage)\n{\n    let bufsize = 4;\n    let buffer = new ArrayBuffer(bufsize);\n    let settingsView = new DataView(buffer);\n    settingsView.setUint8(0, 1); //setting\n    settingsView.setUint8(1, blinkyBusSettingMsg.payload.address); //address\n    settingsView.setInt16(2, blinkyBusSettingMsg.payload.value, true); //value\n    let mqttMsg = {topic:blinkyBusSettingMsg.topic, payload:Buffer.from(buffer)};\n    msgArray = [mqttMsg, {topic:'settingDone', payload:tray}];\n}\nelse\n{\n    switch (msg.payload.cube) \n    {\n        case 'alias':\n            tray.alias.value = msg.payload.value;\n        break;\n        default:\n            break;\n    }\n    msgArray = [null,{topic:'settingDone', payload:tray}];\n}\nreturn msgArray;",
-        "outputs": 2,
+        "func": "let tray = msg.trayConfig.tray;\nlet mqttMsg = null;\nlet normalSettingMsg = {topic:'settingDone', payload:tray};\nlet trayControlMessage = null;\n\nlet icube = msg.trayConfig.blinkybusSettingCubes.indexOf(msg.payload.cube);\n\nif (icube >= 0)\n{\n    let cube = msg.trayConfig.tray[msg.payload.cube];\n    cube.value = msg.payload.value;\n    let bufsize = 4;\n    let buffer = new ArrayBuffer(bufsize);\n    let settingsView = new DataView(buffer);\n    settingsView.setUint8(0, 1); //setting\n    settingsView.setUint8(1, cube.blinkybus.address); //address\n    settingsView.setInt16(2, Math.round(cube.value * cube.blinkybus.scale), true); //value\n    mqttMsg = {topic:tray.type + \"/\" + tray.name + \"/setting\", payload:Buffer.from(buffer)};\n}\nelse\n{\n    switch (msg.payload.cube) \n    {\n        case 'alias':\n            tray.alias.value = msg.payload.value;\n        break;\n        case 'trayControl':\n            switch(msg.payload.value)\n            {\n                case 0:\n                    tray.trayControl.value = 0;\n                    break;\n                case 1:\n                    tray.trayControl.value = -1;\n                    break;\n                case 2:\n                    if (tray.trayControl.value > 0)\n                    {\n                        tray.trayControl.value = 2;\n                        let trayProps  = flow.get('trayProps');\n                        trayControlMessage =\n                        {\n                            topic: trayProps.box + '/' + tray.type + '/' + tray.name + '/echo',\n                            payload: JSON.stringify({ topic: trayProps.box + '/' + tray.type + '/' + tray.name + '/setting/echo' })\n                        };\n                    }\n                    break;\n                default:\n                    tray.trayControl.value = 0;\n                    break;\n             }\n        default:\n            break;\n    }\n}\nreturn [mqttMsg, normalSettingMsg, trayControlMessage];",
+        "outputs": 3,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -767,6 +768,9 @@
             ],
             [
                 "db68a00ed2d7ce63"
+            ],
+            [
+                "55b54f13100eb833"
             ]
         ]
     },
@@ -949,6 +953,19 @@
         ],
         "x": 425,
         "y": 160,
+        "wires": []
+    },
+    {
+        "id": "55b54f13100eb833",
+        "type": "link out",
+        "z": "35ebad916f0a27ed",
+        "name": "reload tray out",
+        "mode": "link",
+        "links": [
+            "f882c2407b2620be"
+        ],
+        "x": 1025,
+        "y": 360,
         "wires": []
     }
 ]

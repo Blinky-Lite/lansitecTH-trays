@@ -76,7 +76,7 @@ module.exports = {
         type: "credentials",
         users: [{
             username: "admin",
-            password: process.env.NODEREDPASSWORD,
+            password: "$2a$12$u6lZPi3UFw3PfFBM4WhgIeynnuQUQT5HgmW03neCtgSkF8bUFWwz6",
             permissions: "*"
         }]
     },
@@ -315,7 +315,8 @@ module.exports = {
      * is not affected by this option. To disable both the editor and the admin
      * API, use either the httpRoot or httpAdminRoot properties
      */
-    //disableEditor: false,
+    disableEditor: (process.env.ENABLE_NODERED_EDITOR === '0'),
+//    disableEditor: false,
 
     /** Customising the editor
      * See https://nodered.org/docs/user-guide/runtime/configuration#editor-themes

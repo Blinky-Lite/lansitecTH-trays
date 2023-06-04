@@ -1,16 +1,10 @@
-FROM node:16.20-alpine3.16
-RUN apk add --update \
-    curl \
-    && rm -rf /var/cache/apk/*
-COPY package.json       /app/
-COPY package-lock.json  /app/
-COPY flows.json         /app/
-COPY flows_cred.json    /app/
-COPY settings.js        /app/
-WORKDIR /app
+FROM nodered/node-red:3.0.2-16
+COPY flows.json         /data/flows.json
+COPY flows_cred.json    /data/flows_cred.json
+COPY settings.js        /data/settings.js
+WORKDIR /usr/src/node-red
+RUN npm install node-red-dashboard@3.4.0
 ENV NODEREDLABEL=blinky-mqtt-trays
 ENV ADMINNAME=ADMIN
 ENV NODEREDPORT=60428
 ENV ENABLE_NODERED_EDITOR=0
-RUN npm install
-CMD ["sh", "-c", "exec node --max-old-space-size=384 node_modules/node-red/red.js -s ./settings.js -u ./"]

@@ -3,8 +3,9 @@ MQTTCLIENTID=blinky-mqtt-trays-01
 MQTTSERVERIP=xxxx
 MQTTUSERNAME=yyyy
 MQTTPASSWORD=zzzz
+MQTTPORT=1883
 NODEREDLABEL=blinky-mqtt-trays
-NODEREDPASSWORD=$2a........................................................W
 ADMINNAME=ADMIN
 NODEREDPORT=60428
+ENABLE_NODERED_EDITOR=1
 

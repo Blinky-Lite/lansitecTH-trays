@@ -327,7 +327,7 @@ module.exports = {
          * See https://github.com/node-red-contrib-themes/theme-collection for
          * a collection of themes to chose from.
          */
-        //theme: "",
+        theme: "dark-scroll",
 
         /** To disable the 'Welcome to Node-RED' tour that is displayed the first
          * time you access the editor for each release of Node-RED, set this to false
@@ -335,10 +335,10 @@ module.exports = {
         //tours: false,
 
         page: {
-            title: process.env.NODEREDLABEL
+            title: "blinky-mqtt-trays"
         },
         header: {
-            title: process.env.NODEREDLABEL
+            title: "blinky-mqtt-trays"
         },
 
         palette: {
@@ -368,7 +368,7 @@ module.exports = {
             lib: "monaco",
             options: 
             {
-                theme: "vs",
+//                theme: "vs",
                 formatOnType: false,
                 formatOnPaste: false,
                 useTabStops: true,

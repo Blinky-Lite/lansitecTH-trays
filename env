@@ -1,11 +1,10 @@
-GIZMOMQTTSETTINGSUBSCRIBE=blinky-box-tutorial/blinky-mqtt/+/setting/#
-MQTTCLIENTID=blinky-mqtt-trays-01
-MQTTSERVERIP=xxxx
-MQTTUSERNAME=yyyy
-MQTTPASSWORD=zzzz
+BOX=blinky-lite-box-01
+TRAYTYPE=blinky-mqtt
+MQTTCLIENTID=blinky-lite-box-01-blinky-mqtt-tray
+MQTTSERVERIP=192.168.1.161
+MQTTUSERNAME=blinky-lite-box-01
+MQTTPASSWORD=xxxx
 MQTTPORT=1883
-NODEREDLABEL=blinky-mqtt-trays
-ADMINNAME=ADMIN
 NODEREDPORT=60428
 ENABLE_NODERED_EDITOR=1
 

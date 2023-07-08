@@ -133,7 +133,7 @@
         "id": "49c7b59e.00e86c",
         "type": "inject",
         "z": "35ebad916f0a27ed",
-        "name": "read Tray",
+        "name": "initFlow",
         "props": [
             {
                 "p": "payload"
@@ -147,9 +147,9 @@
         "crontab": "",
         "once": true,
         "onceDelay": "2",
-        "topic": "readTraydesc",
-        "payload": "GIZMOMQTTSETTINGSUBSCRIBE",
-        "payloadType": "env",
+        "topic": "initFlow",
+        "payload": "",
+        "payloadType": "date",
         "x": 160,
         "y": 120,
         "wires": [
@@ -163,7 +163,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Init flow Variables",
-        "func": "var mqttSplit = msg.payload.split('/');\nvar trayProps = {\n    box         :   mqttSplit[0],\n    type        :   mqttSplit[1],\n};\nflow.set('trayProps',trayProps);\nflow.set('settingInProgress', false);\nflow.set('traysConfig',[]);\nreturn {topic: \"getTrayProps\", payload: true};  \n",
+        "func": "var trayProps = {\n    box         :   env.get(\"BOX\"),\n    type        :   env.get(\"TRAYTYPE\"),\n};\nflow.set('trayProps',trayProps);\nflow.set('settingInProgress', false);\nflow.set('traysConfig',[]);\nreturn {topic: \"getTrayProps\", payload: true};  \n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -174,7 +174,8 @@
         "wires": [
             [
                 "1a3f1121b7b0f033",
-                "1849ea2986414070"
+                "1849ea2986414070",
+                "fbbf0c53817cba2e"
             ]
         ]
     },
@@ -199,7 +200,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Request tray from Database",
-        "func": "if (flow.get('traysConfig').length > 0) return [null,null];\nlet trayProps  = flow.get('trayProps');\nnode.warn(\"Asking for tray from database\");\nvar newMsg =\n{\n    topic: trayProps.box + '/' + trayProps.type + '/' + 'ALL' + '/echo',\n    payload: JSON.stringify({ topic: trayProps.box + '/' + trayProps.type + '/' + 'ALL' + '/setting/echo' })\n};\nreturn [newMsg, { topic: \"getTrayProps\", payload: true }];  \n",
+        "func": "if (flow.get('traysConfig').length > 0) return [null,null];\nlet trayProps  = flow.get('trayProps');\nnode.warn(\"Asking for tray from database\");\nvar newMsg =\n{\n    topic: trayProps.box + '/tray/' + trayProps.type + '/' + 'ALL' + '/echo',\n    payload: JSON.stringify({ topic: trayProps.box + '/tray/' + trayProps.type + '/' + 'ALL' + '/setting/echo' })\n};\nreturn [newMsg, { topic: \"getTrayProps\", payload: true }];  \n",
         "outputs": 2,
         "noerr": 0,
         "initialize": "",
@@ -289,13 +290,13 @@
         "type": "mqtt in",
         "z": "35ebad916f0a27ed",
         "name": "Subscribe Settings",
-        "topic": "$(GIZMOMQTTSETTINGSUBSCRIBE)",
+        "topic": "",
         "qos": "0",
         "datatype": "auto",
         "broker": "84d80994.260508",
         "nl": false,
         "rap": false,
-        "inputs": 0,
+        "inputs": 1,
         "x": 180,
         "y": 400,
         "wires": [
@@ -382,7 +383,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Filter MQTT",
-        "func": "let mqttTopic = msg.topic.split('/')\nlet trayName = mqttTopic[2];\nlet actionTopic = mqttTopic[4];\nif (trayName == env.get(\"ADMINNAME\"))\n{\n    if (actionTopic == 'setting') actionTopic = 'reloadTrays'\n    return {topic:actionTopic, payload:msg.payload};\n}\nif (actionTopic == 'echo')\n{\n    return {topic:'echo', payload:msg.payload};\n}\nlet traysConfig = flow.get('traysConfig');\nlet trayConfig = null;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)  trayConfig = traysConfig[ii];\n}\nif (trayConfig ==  null) return null;\nreturn {topic:actionTopic, payload:msg.payload, trayConfig:trayConfig};\n",
+        "func": "let mqttTopic = msg.topic.split('/')\nlet trayName = mqttTopic[3];\nlet actionTopic = mqttTopic[5];\nif (trayName == 'admin')\n{\n    if (actionTopic == 'setting') actionTopic = 'reloadTrays'\n    return {topic:actionTopic, payload:msg.payload};\n}\nif (actionTopic == 'echo')\n{\n    return {topic:'echo', payload:msg.payload};\n}\nlet traysConfig = flow.get('traysConfig');\nlet trayConfig = null;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)  trayConfig = traysConfig[ii];\n}\nif (trayConfig ==  null) return null;\nreturn {topic:actionTopic, payload:msg.payload, trayConfig:trayConfig};\n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -401,7 +402,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Save Trays in flow",
-        "func": "let tray = msg.payload;\nif (tray.name == env.get(\"ADMINNAME\"))\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet traysConfig = flow.get('traysConfig');\nlet blinkybusCubes = [];\nlet blinkybusSettingCubes = [];\nlet keys = Object.keys(msg.payload)\nfor (let ikey  in keys)\n{\n    if (msg.payload[keys[ikey]].hasOwnProperty('type'))\n    {\n        if (msg.payload[keys[ikey]].hasOwnProperty('blinkybus')) \n        {\n            blinkybusCubes.push(keys[ikey]);\n            if (msg.payload[keys[ikey]].action == \"setting\") \n            {\n                blinkybusSettingCubes.push(keys[ikey]);\n            }\n        }\n    }\n}\ntray.trayControl.value = 0;\nlet index = -1;\nfor (let itray in traysConfig)\n{\n    if ((traysConfig[itray].tray.type == tray.type) && (traysConfig[itray].tray.name == tray.name))\n    {\n        index = Number(itray);\n    }\n}\nif (index < 0)\n{\n    traysConfig.push({tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp});\n}\nelse\n{\n    traysConfig[index] = {tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp};\n}\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
+        "func": "let tray = msg.payload;\nif (tray.name == 'admin')\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet traysConfig = flow.get('traysConfig');\nlet blinkybusCubes = [];\nlet blinkybusSettingCubes = [];\nlet keys = Object.keys(msg.payload)\nfor (let ikey  in keys)\n{\n    if (msg.payload[keys[ikey]].hasOwnProperty('type'))\n    {\n        if (msg.payload[keys[ikey]].hasOwnProperty('blinkybus')) \n        {\n            blinkybusCubes.push(keys[ikey]);\n            if (msg.payload[keys[ikey]].action == \"setting\") \n            {\n                blinkybusSettingCubes.push(keys[ikey]);\n            }\n        }\n    }\n}\ntray.trayControl.value = 0;\nlet index = -1;\nfor (let itray in traysConfig)\n{\n    if ((traysConfig[itray].tray.type == tray.type) && (traysConfig[itray].tray.name == tray.name))\n    {\n        index = Number(itray);\n    }\n}\nif (index < 0)\n{\n    traysConfig.push({tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp});\n}\nelse\n{\n    traysConfig[index] = {tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp};\n}\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
         "outputs": 0,
         "noerr": 0,
         "initialize": "",
@@ -480,7 +481,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Readings",
-        "func": "let topicSplit = msg.topic.split('/');\nlet trayName = topicSplit[1];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null,null];\nif (traysConfig.length < 1) return [null,null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return null;\n\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet stateView  = new DataView(new ArrayBuffer(2));\nfor (let ib = 0; ib < 2; ++ib)   stateView.setUint8(ib, msg.payload[1 - ib]);\nlet state = stateView.getInt16(0)\nif (state == 1)\n{\n    return [null, null, {topic:\"initDevice\",payload:trayConfig}];\n}\n\nfor (let icube = 0; icube < trayConfig.blinkybusCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusCubes[icube]];\n    let dataView  = new DataView(new ArrayBuffer(2));\n    for (let ib = 0; ib < 2; ++ib)   dataView.setUint8(ib, msg.payload[(cube.blinkybus.address * 2) + 1 - ib]);\n    cube.value = dataView.getInt16(0);\n    cube.value = cube.value / cube.blinkybus.scale;\n}\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg,null];\n",
+        "func": "let topicSplit = msg.topic.split('/');\nlet trayName = topicSplit[3];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null,null];\nif (traysConfig.length < 1) return [null,null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return null;\n\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet stateView  = new DataView(new ArrayBuffer(2));\nfor (let ib = 0; ib < 2; ++ib)   stateView.setUint8(ib, msg.payload[1 - ib]);\nlet state = stateView.getInt16(0)\nif (state == 1)\n{\n    return [null, null, {topic:\"initDevice\",payload:trayConfig}];\n}\n\nfor (let icube = 0; icube < trayConfig.blinkybusCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusCubes[icube]];\n    let dataView  = new DataView(new ArrayBuffer(2));\n    for (let ib = 0; ib < 2; ++ib)   dataView.setUint8(ib, msg.payload[(cube.blinkybus.address * 2) + 1 - ib]);\n    cube.value = dataView.getInt16(0);\n    cube.value = cube.value / cube.blinkybus.scale;\n}\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg,null];\n",
         "outputs": 3,
         "noerr": 0,
         "initialize": "",
@@ -505,7 +506,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Init Gizmo",
-        "func": "let trayConfig = msg.payload;\nlet msgs = [];\nmsgs.push({\"address\":0,\"value\":0});\nfor (let icube = 0; icube < trayConfig.blinkybusSettingCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusSettingCubes[icube]];\n    let cubeValue = Math.round(cube.value * cube.blinkybus.scale);\n    msgs.push({\"address\":cube.blinkybus.address,\"value\":cubeValue });\n}\nlet publishTopic = trayConfig.tray.type + \"/\" + trayConfig.tray.name + \"/setting\";\nreturn {topic : publishTopic, payload: msgs};\n",
+        "func": "let trayConfig = msg.payload;\nlet msgs = [];\nmsgs.push({\"address\":0,\"value\":0});\nfor (let icube = 0; icube < trayConfig.blinkybusSettingCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusSettingCubes[icube]];\n    let cubeValue = Math.round(cube.value * cube.blinkybus.scale);\n    msgs.push({\"address\":cube.blinkybus.address,\"value\":cubeValue });\n}\nlet publishTopic = flow.get('trayProps').box + \"/cube/\" + trayConfig.tray.type + \"/\" + trayConfig.tray.name + \"/setting\";\nreturn {topic : publishTopic, payload: msgs};\n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -572,7 +573,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Publish tray",
-        "func": "let tray = msg.payload;\nlet newMsg = \n{\n    topic: flow.get('trayProps').box + '/' + tray.type + '/' + tray.name + '/reading',\n    payload: JSON.stringify(tray)\n};\nreturn  newMsg;  \n",
+        "func": "let tray = msg.payload;\nlet newMsg = \n{\n    topic: flow.get('trayProps').box + '/tray/' + tray.type + '/' + tray.name + '/reading',\n    payload: JSON.stringify(tray)\n};\nreturn  newMsg;  \n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -610,7 +611,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Archive tray",
-        "func": "let tray = msg.payload;\nlet newMsg = \n{\n    topic: flow.get('trayProps').box + '/' + tray.type + '/' + tray.name + '/archive',\n    payload: JSON.stringify(tray)\n};\nreturn  newMsg;  \n",
+        "func": "let tray = msg.payload;\nlet newMsg = \n{\n    topic: flow.get('trayProps').box + '/tray/' + tray.type + '/' + tray.name + '/archive',\n    payload: JSON.stringify(tray)\n};\nreturn  newMsg;  \n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -754,7 +755,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Setting",
-        "func": "let tray = msg.trayConfig.tray;\nlet mqttMsg = null;\nlet normalSettingMsg = {topic:'settingDone', payload:tray};\nlet trayControlMessage = null;\n\nlet icube = msg.trayConfig.blinkybusSettingCubes.indexOf(msg.payload.cube);\n\nif (icube >= 0)\n{\n    let cube = msg.trayConfig.tray[msg.payload.cube];\n    cube.value = msg.payload.value;\n    let bufsize = 4;\n    let buffer = new ArrayBuffer(bufsize);\n    let settingsView = new DataView(buffer);\n    settingsView.setUint8(0, 1); //setting\n    settingsView.setUint8(1, cube.blinkybus.address); //address\n    settingsView.setInt16(2, Math.round(cube.value * cube.blinkybus.scale), true); //value\n    mqttMsg = {topic:tray.type + \"/\" + tray.name + \"/setting\", payload:Buffer.from(buffer)};\n}\nelse\n{\n    switch (msg.payload.cube) \n    {\n        case 'alias':\n            tray.alias.value = msg.payload.value;\n        break;\n        case 'trayControl':\n            switch(msg.payload.value)\n            {\n                case 0:\n                    tray.trayControl.value = 0;\n                    break;\n                case 1:\n                    tray.trayControl.value = -1;\n                    break;\n                case 2:\n                    if (tray.trayControl.value > 0)\n                    {\n                        tray.trayControl.value = 2;\n                        let trayProps  = flow.get('trayProps');\n                        trayControlMessage =\n                        {\n                            topic: trayProps.box + '/' + tray.type + '/' + tray.name + '/echo',\n                            payload: JSON.stringify({ topic: trayProps.box + '/' + tray.type + '/' + tray.name + '/setting/echo' })\n                        };\n                    }\n                    break;\n                default:\n                    tray.trayControl.value = 0;\n                    break;\n             }\n        default:\n            break;\n    }\n}\nreturn [mqttMsg, normalSettingMsg, trayControlMessage];",
+        "func": "let tray = msg.trayConfig.tray;\nlet mqttMsg = null;\nlet normalSettingMsg = {topic:'settingDone', payload:tray};\nlet trayControlMessage = null;\nlet trayProps  = flow.get('trayProps');\n\nlet icube = msg.trayConfig.blinkybusSettingCubes.indexOf(msg.payload.cube);\n\nif (icube >= 0)\n{\n    let cube = msg.trayConfig.tray[msg.payload.cube];\n    cube.value = msg.payload.value;\n    let bufsize = 4;\n    let buffer = new ArrayBuffer(bufsize);\n    let settingsView = new DataView(buffer);\n    settingsView.setUint8(0, 1); //setting\n    settingsView.setUint8(1, cube.blinkybus.address); //address\n    settingsView.setInt16(2, Math.round(cube.value * cube.blinkybus.scale), true); //value\n    mqttMsg = {topic: trayProps.box + '/cube/' + tray.type + \"/\" + tray.name + \"/setting\", payload:Buffer.from(buffer)};\n}\nelse\n{\n    switch (msg.payload.cube) \n    {\n        case 'alias':\n            tray.alias.value = msg.payload.value;\n        break;\n        case 'trayControl':\n            switch(msg.payload.value)\n            {\n                case 0:\n                    tray.trayControl.value = 0;\n                    break;\n                case 1:\n                    tray.trayControl.value = -1;\n                    break;\n                case 2:\n                    if (tray.trayControl.value > 0)\n                    {\n                        tray.trayControl.value = 2;\n                        trayControlMessage =\n                        {\n                            topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/echo',\n                            payload: JSON.stringify({ topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/setting/echo' })\n                        };\n                    }\n                    break;\n                default:\n                    tray.trayControl.value = 0;\n                    break;\n             }\n        break;\n        default:\n            break;\n    }\n}\nreturn [mqttMsg, normalSettingMsg, trayControlMessage];",
         "outputs": 3,
         "noerr": 0,
         "initialize": "",
@@ -843,7 +844,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Reload trays",
-        "func": "if (msg.value == 0) return null;\nreturn {topic:'readTraydesc', payload: env.get(\"GIZMOMQTTSETTINGSUBSCRIBE\")}\n",
+        "func": "if (msg.value == 0) return null;\nreturn {topic:'initFlow', payload: new Date().getTime()}\n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -890,8 +891,8 @@
         "id": "a1ac9e631b1c38ed",
         "type": "function",
         "z": "35ebad916f0a27ed",
-        "name": "Gizmo MQTT Reading topic",
-        "func": "let subscribeTopic = flow.get('trayProps').type + \"/+/reading\";\nreturn {action:\"subscribe\",topic:subscribeTopic};",
+        "name": "Cube MQTT Reading topic",
+        "func": "let subscribeTopic = flow.get('trayProps').box + \"/cube/\" + flow.get('trayProps').type + \"/+/reading\";\nreturn {action:\"subscribe\",topic:subscribeTopic};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -909,7 +910,7 @@
         "id": "947b3065ee2175f6",
         "type": "mqtt in",
         "z": "35ebad916f0a27ed",
-        "name": "Gizmo MQTT",
+        "name": "Cube MQTT",
         "topic": "",
         "qos": "0",
         "datatype": "auto-detect",
@@ -967,5 +968,24 @@
         "x": 1025,
         "y": 360,
         "wires": []
+    },
+    {
+        "id": "fbbf0c53817cba2e",
+        "type": "function",
+        "z": "35ebad916f0a27ed",
+        "name": "MQTT subscribe topic",
+        "func": "let subscribeTopic = flow.get('trayProps').box + \"/tray/\" + flow.get('trayProps').type +\"/+/setting/#\";\nreturn {action:\"subscribe\",topic:subscribeTopic};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 200,
+        "y": 340,
+        "wires": [
+            [
+                "5023092b.a0fe38"
+            ]
+        ]
     }
 ]

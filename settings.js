@@ -335,10 +335,10 @@ module.exports = {
         //tours: false,
 
         page: {
-            title: "blinky-mqtt-trays"
+            title: "blinky-leak-trays"
         },
         header: {
-            title: "blinky-mqtt-trays"
+            title: "blinky-leak-trays"
         },
 
         palette: {

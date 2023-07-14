@@ -1,10 +1,10 @@
 BOX=blinky-lite-box-01
-TRAYTYPE=blinky-mqtt
-MQTTCLIENTID=blinky-lite-box-01-blinky-mqtt-tray
+TRAYTYPE=blinky-leak
+MQTTCLIENTID=blinky-leak-trays-01
 MQTTSERVERIP=192.168.1.161
 MQTTUSERNAME=blinky-lite-box-01
-MQTTPASSWORD=xxxx
+MQTTPASSWORD=areallybadpassword
 MQTTPORT=1883
-NODEREDPORT=60428
+NODEREDPORT=60430
 ENABLE_NODERED_EDITOR=1
 

@@ -481,7 +481,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Readings",
-        "func": "let topicSplit = msg.topic.split('/');\nif (topicSplit[1] == 'tray') return [null,null,null];\nlet trayName = topicSplit[3];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null,null];\nif (traysConfig.length < 1) return [null,null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return [null,null,null];\ntrayConfig.cubeType = topicSplit[1];\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet stateView  = new DataView(new ArrayBuffer(2));\nfor (let ib = 0; ib < 2; ++ib)   stateView.setUint8(ib, msg.payload[1 - ib]);\nlet state = stateView.getInt16(0)\nif (state == 1)\n{\n    return [null, null, {topic:\"initDevice\",payload:trayConfig}];\n}\n\nfor (let icube = 0; icube < trayConfig.blinkybusCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusCubes[icube]];\n    let dataView  = new DataView(new ArrayBuffer(2));\n    for (let ib = 0; ib < 2; ++ib)   dataView.setUint8(ib, msg.payload[(cube.blinkybus.address * 2) + 1 - ib]);\n    cube.value = dataView.getInt16(0);\n    cube.value = cube.value / cube.blinkybus.scale;\n}\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg,null];\n",
+        "func": "let topicSplit = msg.topic.split('/');\nif (topicSplit[1] == 'tray') return [null,null,null];\nlet trayName = topicSplit[3];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null,null];\nif (traysConfig.length < 1) return [null,null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return [null,null,null];\ntrayConfig.cubeType = topicSplit[1];\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet stateView  = new DataView(new ArrayBuffer(2));\nfor (let ib = 0; ib < 2; ++ib)   stateView.setUint8(ib, msg.payload[1 - ib]);\nlet state = stateView.getInt16(0)\nif (state == 1)\n{\n    return [null, null, {topic:\"initDevice\",payload:trayConfig}];\n}\n\nfor (let icube = 0; icube < trayConfig.blinkybusCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusCubes[icube]];\n    let dataView  = new DataView(new ArrayBuffer(2));\n    for (let ib = 0; ib < 2; ++ib)   dataView.setUint8(ib, msg.payload[(cube.blinkybus.address * 2) + 1 - ib]);\n    cube.value = dataView.getInt16(0);\n    cube.value = cube.value / cube.blinkybus.scale;\n}\ntrayConfig.tray.timeStamp = new Date().getTime();\ntrayConfig.tray.lastUpdate.value = 0;\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg,null];\n",
         "outputs": 3,
         "noerr": 0,
         "initialize": "",
@@ -596,7 +596,8 @@
             "cffe9c2a52b1e43e",
             "db68a00ed2d7ce63",
             "87f76838d7e80f8d",
-            "938e10b962484b58"
+            "938e10b962484b58",
+            "fa6fa09999cb358d"
         ],
         "x": 1115,
         "y": 280,
@@ -987,5 +988,85 @@
                 "5023092b.a0fe38"
             ]
         ]
+    },
+    {
+        "id": "ee72b88e7a33bf0f",
+        "type": "inject",
+        "z": "35ebad916f0a27ed",
+        "name": "Every Minute",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "60",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 820,
+        "wires": [
+            [
+                "8ed7b16c7cf23baa"
+            ]
+        ]
+    },
+    {
+        "id": "8ed7b16c7cf23baa",
+        "type": "function",
+        "z": "35ebad916f0a27ed",
+        "name": "Check for stale trays",
+        "func": "let traysConfig = flow.get('traysConfig');\nlet now = new Date().getTime();\nlet staleTrays = [];\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    let milli = now - traysConfig[ii].tray.timeStamp;\n    traysConfig[ii].tray.lastUpdate.value = Math.round(milli / 3600) / 1000;\n    if (milli > traysConfig[ii].tray.arcPeriod)\n    {\n        staleTrays.push(traysConfig[ii].tray);\n    }\n}\nif (staleTrays.length < 1) return null;\nreturn {topic: 'staleTrays',payload:staleTrays};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 820,
+        "wires": [
+            [
+                "b8cff6830921f2a3"
+            ]
+        ]
+    },
+    {
+        "id": "b8cff6830921f2a3",
+        "type": "split",
+        "z": "35ebad916f0a27ed",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 630,
+        "y": 820,
+        "wires": [
+            [
+                "fa6fa09999cb358d"
+            ]
+        ]
+    },
+    {
+        "id": "fa6fa09999cb358d",
+        "type": "link out",
+        "z": "35ebad916f0a27ed",
+        "name": "Stale Tray out",
+        "mode": "link",
+        "links": [
+            "6b45b4c31fad6b8b"
+        ],
+        "x": 755,
+        "y": 820,
+        "wires": []
     }
 ]

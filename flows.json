@@ -248,7 +248,7 @@
         "allowrate": false,
         "outputs": 1,
         "x": 920,
-        "y": 100,
+        "y": 120,
         "wires": [
             [
                 "175febc97e8ae24a"
@@ -402,7 +402,7 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Save Trays in flow",
-        "func": "let tray = msg.payload;\nif (tray.name == 'admin')\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet traysConfig = flow.get('traysConfig');\nlet blinkybusCubes = [];\nlet blinkybusSettingCubes = [];\nlet keys = Object.keys(msg.payload)\nfor (let ikey  in keys)\n{\n    if (msg.payload[keys[ikey]].hasOwnProperty('type'))\n    {\n        if (msg.payload[keys[ikey]].hasOwnProperty('blinkybus')) \n        {\n            blinkybusCubes.push(keys[ikey]);\n            if (msg.payload[keys[ikey]].action == \"setting\") \n            {\n                blinkybusSettingCubes.push(keys[ikey]);\n            }\n        }\n    }\n}\ntray.trayControl.value = 0;\nlet index = -1;\nfor (let itray in traysConfig)\n{\n    if ((traysConfig[itray].tray.type == tray.type) && (traysConfig[itray].tray.name == tray.name))\n    {\n        index = Number(itray);\n    }\n}\nif (index < 0)\n{\n    traysConfig.push({tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp, cubeType:\"cube\"});\n}\nelse\n{\n    traysConfig[index] = {tray:tray, blinkybusCubes:blinkybusCubes, blinkybusSettingCubes:blinkybusSettingCubes, archiveTime:tray.timeStamp, cubeType:\"cube\"};\n}\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
+        "func": "let tray = msg.payload;\nif (tray.name == 'admin')\n{\n    tray.reloadTrays.value = 0;\n    flow.set('adminTray', tray);\n    return null;\n}\nlet traysConfig = flow.get('traysConfig');\ntray.trayControl.value = 0;\nlet index = -1;\nfor (let itray in traysConfig)\n{\n    if ((traysConfig[itray].tray.type == tray.type) && (traysConfig[itray].tray.name == tray.name))\n    {\n        index = Number(itray);\n    }\n}\nif (index < 0)\n{\n    traysConfig.push({tray:tray, archiveTime:tray.timeStamp, cubeType:\"cube\"});\n}\nelse\n{\n    traysConfig[index] = {tray:tray, archiveTime:tray.timeStamp, cubeType:\"cube\"};\n}\n//node.warn(flow.get('traysConfig'));\nreturn null;\n",
         "outputs": 0,
         "noerr": 0,
         "initialize": "",
@@ -421,8 +421,8 @@
         "links": [
             "6b45b4c31fad6b8b"
         ],
-        "x": 555,
-        "y": 620,
+        "x": 545,
+        "y": 660,
         "wires": []
     },
     {
@@ -434,139 +434,31 @@
         "links": [
             "ce5672e1f22d7692"
         ],
-        "x": 555,
-        "y": 660,
+        "x": 545,
+        "y": 700,
         "wires": []
-    },
-    {
-        "id": "b2c154f4feeb59ad",
-        "type": "split",
-        "z": "35ebad916f0a27ed",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 830,
-        "y": 720,
-        "wires": [
-            [
-                "98a4717e49bcd3b3"
-            ]
-        ]
-    },
-    {
-        "id": "98a4717e49bcd3b3",
-        "type": "function",
-        "z": "35ebad916f0a27ed",
-        "name": "Prep Gizmo MQTT data",
-        "func": "let bufsize = 4;\nlet buffer = new ArrayBuffer(bufsize);\nlet settingsView = new DataView(buffer);\nsettingsView.setUint8(0, 1); //setting\nsettingsView.setUint8(1, msg.payload.address); //address\nsettingsView.setInt16(2, msg.payload.value, true); //value\nreturn {topic:msg.topic, payload:Buffer.from(buffer),rate:500};",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1010,
-        "y": 720,
-        "wires": [
-            [
-                "e616f7335fc84c23"
-            ]
-        ]
     },
     {
         "id": "da3c617faa3892d7",
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Readings",
-        "func": "let topicSplit = msg.topic.split('/');\nif (topicSplit[1] == 'tray') return [null,null,null];\nlet trayName = topicSplit[3];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null,null];\nif (traysConfig.length < 1) return [null,null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return [null,null,null];\ntrayConfig.cubeType = topicSplit[1];\ntrayConfig.tray.timeStamp = new Date().getTime();\nlet stateView  = new DataView(new ArrayBuffer(2));\nfor (let ib = 0; ib < 2; ++ib)   stateView.setUint8(ib, msg.payload[1 - ib]);\nlet state = stateView.getInt16(0)\nif (state == 1)\n{\n    return [null, null, {topic:\"initDevice\",payload:trayConfig}];\n}\n\nfor (let icube = 0; icube < trayConfig.blinkybusCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusCubes[icube]];\n    let dataView  = new DataView(new ArrayBuffer(2));\n    for (let ib = 0; ib < 2; ++ib)   dataView.setUint8(ib, msg.payload[(cube.blinkybus.address * 2) + 1 - ib]);\n    cube.value = dataView.getInt16(0);\n    cube.value = cube.value / cube.blinkybus.scale;\n}\ntrayConfig.tray.timeStamp = new Date().getTime();\ntrayConfig.tray.lastUpdate.value = 0;\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg,null];\n",
-        "outputs": 3,
+        "func": "let topicSplit = msg.topic.split('/');\nif (topicSplit[1] == 'tray') return [null,null];\nlet trayName = topicSplit[3];\nlet traysConfig = flow.get('traysConfig');\nif (traysConfig == undefined) return [null,null];\nif (traysConfig.length < 1) return [null,null];\nlet trayConfig = null;\nlet trayIndex = -1;\nfor (let ii = 0; ii < traysConfig.length; ++ii)\n{\n    if (traysConfig[ii].tray.name == trayName)\n    {\n        trayConfig = traysConfig[ii];\n        trayIndex = ii;\n    }\n}\nif (trayConfig ==  null) return [null,null];\n\ntrayConfig.cubeType = topicSplit[1];\ntrayConfig.tray.timeStamp = new Date().getTime();\ntrayConfig.tray.watchdog.value = msg.payload.watchdog;\ntrayConfig.tray.sensor1Volts.value = msg.payload.sensor1;\ntrayConfig.tray.sensor2Volts.value = msg.payload.sensor2;\ntrayConfig.tray.refVolts.value = msg.payload.sensor3;\ntrayConfig.tray.sysVolts.value = msg.payload.vsys;\ntrayConfig.tray.chipTemp.value = msg.payload.chipTemp - trayConfig.tray.chipTemp_off.value;\ntrayConfig.tray.sensor1.value = conductance(msg.payload.sensor1);\ntrayConfig.tray.sensor2.value = conductance(msg.payload.sensor2);\n\ntrayConfig.tray.lastUpdate.value = 0;\nlet newMsg = {topic:trayName, payload:trayConfig.tray};\nlet archiveMsg = null;\nlet archiveTimes = flow.get('archiveTimes');\nif ((trayConfig.tray.timeStamp - trayConfig.archiveTime) > trayConfig.tray.arcPeriod)\n{\n    trayConfig.archiveTime = trayConfig.tray.timeStamp;\n    archiveMsg = newMsg;\n}\nreturn  [newMsg,archiveMsg];\n\n\nfunction conductance(raw)\n{\n    let fraw = raw;\n    let fcond = 0.0;\n    let shortVal = trayConfig.tray.sensorShortVolts.value;\n    let openVal = trayConfig.tray.refVolts.value;\n    if (raw <= shortVal) fraw = shortVal + 0.0001;\n    if (raw >= openVal)  fraw = openVal  - 0.0001;\n    let traw = (fraw     - shortVal) / 3.3;\n    let topen= (openVal - shortVal) / 3.3;\n    fcond = trayConfig.tray.condMult.value * (topen * (1.0 - traw) - traw * (1.0 - topen)) / (topen * traw);\n    if (fcond < 0.0 ) fcond = 0.0;\n    if (fcond > 32766.0 ) fcond = 32766.0;\n    fcond = Math.round(10 * fcond) / 10;\n    return fcond; \n}\n",
+        "outputs": 2,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 410,
-        "y": 660,
+        "x": 400,
+        "y": 680,
         "wires": [
             [
                 "cffe9c2a52b1e43e"
             ],
             [
                 "0dba75772bcd5ea0"
-            ],
-            [
-                "135777d54406608e"
             ]
         ]
-    },
-    {
-        "id": "135777d54406608e",
-        "type": "function",
-        "z": "35ebad916f0a27ed",
-        "name": "Init Gizmo",
-        "func": "let trayConfig = msg.payload;\nlet msgs = [];\nmsgs.push({\"address\":0,\"value\":0});\nfor (let icube = 0; icube < trayConfig.blinkybusSettingCubes.length; ++icube)\n{\n    let cube = trayConfig.tray[trayConfig.blinkybusSettingCubes[icube]];\n    let cubeValue = Math.round(cube.value * cube.blinkybus.scale);\n    msgs.push({\"address\":cube.blinkybus.address,\"value\":cubeValue });\n}\nlet publishTopic = flow.get('trayProps').box + \"/\" + trayConfig.cubeType + \"/\" + trayConfig.tray.type + \"/\" + trayConfig.tray.name + \"/setting\";\nreturn {topic : publishTopic, payload: msgs};\n",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 660,
-        "y": 720,
-        "wires": [
-            [
-                "b2c154f4feeb59ad"
-            ]
-        ]
-    },
-    {
-        "id": "8674b6870aed740f",
-        "type": "mqtt out",
-        "z": "35ebad916f0a27ed",
-        "name": "Gizmo MQTT",
-        "topic": "",
-        "qos": "1",
-        "retain": "false",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "84d80994.260508",
-        "x": 1460,
-        "y": 720,
-        "wires": []
-    },
-    {
-        "id": "644bd24ad5c779d2",
-        "type": "link in",
-        "z": "35ebad916f0a27ed",
-        "name": "deviceMQTT publish",
-        "links": [
-            "e616f7335fc84c23",
-            "baed8fbe731e1cf0"
-        ],
-        "x": 1295,
-        "y": 720,
-        "wires": [
-            [
-                "8674b6870aed740f"
-            ]
-        ]
-    },
-    {
-        "id": "e616f7335fc84c23",
-        "type": "link out",
-        "z": "35ebad916f0a27ed",
-        "name": "Init device setting in",
-        "mode": "link",
-        "links": [
-            "644bd24ad5c779d2"
-        ],
-        "x": 1175,
-        "y": 720,
-        "wires": []
     },
     {
         "id": "d029d546e79dc7cc",
@@ -735,19 +627,6 @@
             "ce5672e1f22d7692"
         ],
         "x": 1025,
-        "y": 320,
-        "wires": []
-    },
-    {
-        "id": "baed8fbe731e1cf0",
-        "type": "link out",
-        "z": "35ebad916f0a27ed",
-        "name": "Tray Setting In",
-        "mode": "link",
-        "links": [
-            "644bd24ad5c779d2"
-        ],
-        "x": 1025,
         "y": 280,
         "wires": []
     },
@@ -756,8 +635,8 @@
         "type": "function",
         "z": "35ebad916f0a27ed",
         "name": "Create Setting",
-        "func": "let tray = msg.trayConfig.tray;\nlet mqttMsg = null;\nlet normalSettingMsg = {topic:'settingDone', payload:tray};\nlet trayControlMessage = null;\nlet trayProps  = flow.get('trayProps');\n\nlet icube = msg.trayConfig.blinkybusSettingCubes.indexOf(msg.payload.cube);\n\nif (icube >= 0)\n{\n    let cube = msg.trayConfig.tray[msg.payload.cube];\n    cube.value = msg.payload.value;\n    let bufsize = 4;\n    let buffer = new ArrayBuffer(bufsize);\n    let settingsView = new DataView(buffer);\n    settingsView.setUint8(0, 1); //setting\n    settingsView.setUint8(1, cube.blinkybus.address); //address\n    settingsView.setInt16(2, Math.round(cube.value * cube.blinkybus.scale), true); //value\n    mqttMsg = {topic: trayProps.box + \"/\" + msg.trayConfig.cubeType + \"/\" + tray.type + \"/\" + tray.name + \"/setting\", payload:Buffer.from(buffer)};\n}\nelse\n{\n    switch (msg.payload.cube) \n    {\n        case 'alias':\n            tray.alias.value = msg.payload.value;\n        break;\n        case 'trayControl':\n            switch(msg.payload.value)\n            {\n                case 0:\n                    tray.trayControl.value = 0;\n                    break;\n                case 1:\n                    tray.trayControl.value = -1;\n                    break;\n                case 2:\n                    if (tray.trayControl.value > 0)\n                    {\n                        tray.trayControl.value = 2;\n                        trayControlMessage =\n                        {\n                            topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/echo',\n                            payload: JSON.stringify({ topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/setting/echo' })\n                        };\n                    }\n                    break;\n                default:\n                    tray.trayControl.value = 0;\n                    break;\n             }\n        break;\n        default:\n            break;\n    }\n}\nreturn [mqttMsg, normalSettingMsg, trayControlMessage];",
-        "outputs": 3,
+        "func": "let tray = msg.trayConfig.tray;\nlet normalSettingMsg = {topic:'settingDone', payload:tray};\nlet trayControlMessage = null;\nlet trayProps  = flow.get('trayProps');\n\nswitch (msg.payload.cube) \n{\n    case 'alias':\n        tray.alias.value = msg.payload.value;\n    break;\n    case 'chipTemp_off':\n        tray.chipTemp_off.value = msg.payload.value;\n    break;\n    case 'condMult':\n        tray.condMult.value = msg.payload.value;\n    break;\n    case 'sensorShortVolts':\n        tray.sensorShortVolts.value = msg.payload.value;\n    break;\n    case 'trayControl':\n        switch(msg.payload.value)\n        {\n            case 0:\n                tray.trayControl.value = 0;\n                break;\n            case 1:\n                tray.trayControl.value = -1;\n                break;\n            case 2:\n                if (tray.trayControl.value > 0)\n                {\n                    tray.trayControl.value = 2;\n                    trayControlMessage =\n                    {\n                        topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/echo',\n                        payload: JSON.stringify({ topic: trayProps.box + '/tray/' + tray.type + '/' + tray.name + '/setting/echo' })\n                    };\n                }\n                break;\n            default:\n                tray.trayControl.value = 0;\n                break;\n            }\n    break;\n    default:\n        break;\n}\n\nreturn [normalSettingMsg, trayControlMessage];",
+        "outputs": 2,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -765,9 +644,6 @@
         "x": 870,
         "y": 300,
         "wires": [
-            [
-                "baed8fbe731e1cf0"
-            ],
             [
                 "db68a00ed2d7ce63"
             ],
@@ -920,11 +796,11 @@
         "rap": true,
         "rh": 0,
         "inputs": 1,
-        "x": 230,
-        "y": 660,
+        "x": 170,
+        "y": 680,
         "wires": [
             [
-                "3eb6ea4896e1d4da"
+                "da3c617faa3892d7"
             ]
         ]
     },
@@ -967,7 +843,7 @@
             "f882c2407b2620be"
         ],
         "x": 1025,
-        "y": 360,
+        "y": 340,
         "wires": []
     },
     {
@@ -1065,24 +941,8 @@
         "links": [
             "6b45b4c31fad6b8b"
         ],
-        "x": 755,
+        "x": 765,
         "y": 820,
-        "wires": []
-    },
-    {
-        "id": "3eb6ea4896e1d4da",
-        "type": "debug",
-        "z": "35ebad916f0a27ed",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 260,
-        "y": 740,
         "wires": []
     }
 ]

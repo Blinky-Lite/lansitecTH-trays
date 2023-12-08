@@ -1,6 +1,6 @@
 BOX=blinky-lite-box-01
-TRAYTYPE=blinky-leak
-MQTTCLIENTID=blinky-leak-trays-01
+TRAYTYPE=blinky-DS18B20-p
+MQTTCLIENTID=blinky-blinky-DS18B20-p-trays-01
 MQTTSERVERIP=192.168.1.161
 MQTTUSERNAME=blinky-lite-box-01
 MQTTPASSWORD=areallybadpassword

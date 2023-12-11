@@ -1,1 +1,1 @@
-# blinky-DS18B20-p-trays
+# lansitec-TH-trays

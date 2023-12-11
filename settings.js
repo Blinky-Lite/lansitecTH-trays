@@ -335,10 +335,10 @@ module.exports = {
         //tours: false,
 
         page: {
-            title: "blinky-DS18B20-p-trays"
+            title: "lansitecTH-trays"
         },
         header: {
-            title: "blinky-DS18B20-p-trays"
+            title: "lansitecTH-trays"
         },
 
         palette: {

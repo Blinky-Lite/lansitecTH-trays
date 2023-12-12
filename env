@@ -1,5 +1,6 @@
 BOX=bl-maxiv-01
-TRAYTYPE=lansitecTH
+TRAYTYPE_1=lansitecTH
+TRAYTYPE_2=lora-temp
 MQTTCLIENTID=lansitecTH-trays-01
 MQTTSERVERIP=192.168.22.43
 MQTTUSERNAME=bl-maxiv-01
